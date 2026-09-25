@@ -1,0 +1,15 @@
+{
+  "name": "gamehub-redis",
+  "version": "1.0.0",
+  "description": "GameHub: REST API на Node.js поверх Redis с репликацией и Sentinel",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "consumer": "node src/consumer.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2"
+  }
+}

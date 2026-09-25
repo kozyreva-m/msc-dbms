@@ -1,0 +1,142 @@
+# GameHub: отказоустойчивый Redis (1 мастер, 2 реплики, 3 Sentinel),
+# REST API, потребитель уведомлений и Redis Insight.
+#
+# Реплики настроены флагами, а не файлом: после failover реплика становится
+# мастером, поэтому у неё те же maxmemory и min-replicas-*, что у мастера.
+
+services:
+  redis-master:
+    image: redis:7
+    container_name: redis-master
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - redis-net
+
+  redis-replica-1:
+    image: redis:7
+    container_name: redis-replica-1
+    command: >
+      redis-server --replicaof redis-master 6379 --replica-read-only yes
+      --appendonly yes --maxmemory 256mb --maxmemory-policy volatile-lru
+      --min-replicas-to-write 1 --min-replicas-max-lag 10
+    ports:
+      - "6380:6379"
+    networks:
+      - redis-net
+    depends_on:
+      - redis-master
+
+  redis-replica-2:
+    image: redis:7
+    container_name: redis-replica-2
+    command: >
+      redis-server --replicaof redis-master 6379 --replica-read-only yes
+      --appendonly yes --maxmemory 256mb --maxmemory-policy volatile-lru
+      --min-replicas-to-write 1 --min-replicas-max-lag 10
+    ports:
+      - "6381:6379"
+    networks:
+      - redis-net
+    depends_on:
+      - redis-master
+
+  sentinel-1:
+    image: redis:7
+    container_name: sentinel-1
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel1.conf:/etc/redis/sentinel.conf
+    ports:
+      - "26379:26379"
+    networks:
+      - redis-net
+    depends_on:
+      - redis-master
+      - redis-replica-1
+      - redis-replica-2
+
+  sentinel-2:
+    image: redis:7
+    container_name: sentinel-2
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel2.conf:/etc/redis/sentinel.conf
+    ports:
+      - "26380:26379"
+    networks:
+      - redis-net
+    depends_on:
+      - redis-master
+      - redis-replica-1
+      - redis-replica-2
+
+  sentinel-3:
+    image: redis:7
+    container_name: sentinel-3
+    command: redis-sentinel /etc/redis/sentinel.conf
+    volumes:
+      - ./sentinel3.conf:/etc/redis/sentinel.conf
+    ports:
+      - "26381:26379"
+    networks:
+      - redis-net
+    depends_on:
+      - redis-master
+      - redis-replica-1
+      - redis-replica-2
+
+  app:
+    build: ./app
+    container_name: gamehub-app
+    command: ["node", "src/server.js"]
+    environment:
+      PORT: "3000"
+      SENTINELS: "sentinel-1:26379,sentinel-2:26379,sentinel-3:26379"
+      MASTER_NAME: "mymaster"
+    ports:
+      - "3000:3000"
+    networks:
+      - redis-net
+    restart: unless-stopped
+    depends_on:
+      - sentinel-1
+      - sentinel-2
+      - sentinel-3
+
+  consumer:
+    build: ./app
+    container_name: gamehub-consumer
+    command: ["node", "src/consumer.js"]
+    environment:
+      SENTINELS: "sentinel-1:26379,sentinel-2:26379,sentinel-3:26379"
+      MASTER_NAME: "mymaster"
+      CONSUMER_NAME: "consumer-1"
+    networks:
+      - redis-net
+    restart: unless-stopped
+    depends_on:
+      - sentinel-1
+      - sentinel-2
+      - sentinel-3
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
+    ports:
+      - "5540:5540"
+    networks:
+      - redis-net
+    depends_on:
+      - redis-master
+
+networks:
+  redis-net:
+    driver: bridge
+
+volumes:
+  redis-data:
