@@ -1,0 +1,72 @@
+name: cassandra-homework
+x-node: &node
+  image: cassandra:5.0.4
+  environment:
+    CASSANDRA_CLUSTER_NAME: cassandra-course
+    CASSANDRA_ENDPOINT_SNITCH: SimpleSnitch
+    CASSANDRA_DC: dc1
+    CASSANDRA_RACK: rack1
+    CASSANDRA_SEEDS: c1,c2,c3
+    MAX_HEAP_SIZE: 512M
+    HEAP_NEWSIZE: 100M
+  healthcheck:
+    test: ["CMD-SHELL", "cqlsh 127.0.0.1 -e 'select release_version from system.local' >/dev/null 2>&1"]
+    interval: 10s
+    timeout: 10s
+    retries: 30
+    start_period: 20s
+services:
+  c1:
+    <<: *node
+    volumes: [data_c1:/var/lib/cassandra]
+  c2:
+    <<: *node
+    volumes: [data_c2:/var/lib/cassandra]
+  c3:
+    <<: *node
+    volumes: [data_c3:/var/lib/cassandra]
+  init:
+    image: cassandra:5.0.4
+    restart: "no"
+    depends_on:
+      c1: {condition: service_healthy}
+      c2: {condition: service_healthy}
+      c3: {condition: service_healthy}
+    volumes: [.:/work:ro]
+    entrypoint: [cqlsh, c1, --file, /work/init.cql]
+  lab:
+    image: cassandra:5.0.4
+    restart: "no"
+    profiles: [tools]
+    depends_on:
+      init: {condition: service_completed_successfully}
+    user: "0:0"
+    volumes: [.:/work:ro, ./results:/out]
+    working_dir: /work
+    environment:
+      CONTACT_POINTS: c1,c2,c3
+      PORT: 9042
+      # Внутренняя папка zipped-драйвера, поставляемого с образом cassandra:5.0.4
+      # (/opt/cassandra/lib/cassandra-driver-internal-only-<версия>.zip/
+      #  cassandra-driver-<версия>). При смене тега образа путь надо сверять.
+      PYTHONPATH: /opt/cassandra/lib/cassandra-driver-internal-only-3.29.0.zip/cassandra-driver-3.29.0
+      # /work смонтирован только для чтения - не пытаться писать .pyc в каталог
+      # комплекта; это и быстрее, и не мусорит в рабочей папке.
+      PYTHONDONTWRITEBYTECODE: "1"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        mkdir -p /out
+        chmod 0777 /out
+        export HW_CASE="$${1:-help}"
+        exec python3 /work/lab.py
+      - lab
+    command: [help]
+volumes:
+  data_c1:
+  data_c2:
+  data_c3:
+networks:
+  default:
+    internal: true
