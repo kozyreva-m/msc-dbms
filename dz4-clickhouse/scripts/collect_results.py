@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect task 2–4 metrics from local ClickHouse HTTP API."""
+"""Collect task 2-4 metrics from local ClickHouse HTTP API."""
 import re
 import urllib.parse
 import urllib.request
