@@ -47,20 +47,18 @@ ORDER BY table;
 SHOW CREATE TABLE takt.hw_events_time;
 SHOW CREATE TABLE takt.hw_events_country;
 
--- 2.2 Шаблон отчёта за 24 октября (подставьте имя таблицы и при необходимости country = 'DE')
--- В конец каждого запроса добавляйте SETTINGS из задания.
--- Сначала выполните SELECT, сохраните Read: rows/bytes, затем EXPLAIN indexes = 1.
+-- 2.2 Четыре варианта за 24.10.2026: сначала SELECT (Read rows/bytes в /play), затем EXPLAIN indexes = 1
 
-/*
+-- 2.2.1 DE, hw_events_time
 SELECT
     country,
     count() AS events_total,
     countIf(played_seconds < 20) AS events_under_20,
     round(100 * countIf(played_seconds < 20) / count(), 2) AS under_20_percent
-FROM takt.hw_events_time   -- или hw_events_country
+FROM takt.hw_events_time
 WHERE ended_at >= toDateTime('2026-10-24 00:00:00', 'UTC')
   AND ended_at <  toDateTime('2026-10-25 00:00:00', 'UTC')
-  -- AND country = 'DE'   -- только для варианта «Германия»
+  AND country = 'DE'
 GROUP BY country
 ORDER BY country
 SETTINGS
@@ -68,4 +66,55 @@ SETTINGS
     use_query_cache = 0,
     use_query_condition_cache = 0,
     optimize_move_to_prewhere = 0;
-*/
+
+-- 2.2.2 DE, hw_events_country
+SELECT
+    country,
+    count() AS events_total,
+    countIf(played_seconds < 20) AS events_under_20,
+    round(100 * countIf(played_seconds < 20) / count(), 2) AS under_20_percent
+FROM takt.hw_events_country
+WHERE ended_at >= toDateTime('2026-10-24 00:00:00', 'UTC')
+  AND ended_at <  toDateTime('2026-10-25 00:00:00', 'UTC')
+  AND country = 'DE'
+GROUP BY country
+ORDER BY country
+SETTINGS
+    max_threads = 4,
+    use_query_cache = 0,
+    use_query_condition_cache = 0,
+    optimize_move_to_prewhere = 0;
+
+-- 2.2.3 Все страны, hw_events_time
+SELECT
+    country,
+    count() AS events_total,
+    countIf(played_seconds < 20) AS events_under_20,
+    round(100 * countIf(played_seconds < 20) / count(), 2) AS under_20_percent
+FROM takt.hw_events_time
+WHERE ended_at >= toDateTime('2026-10-24 00:00:00', 'UTC')
+  AND ended_at <  toDateTime('2026-10-25 00:00:00', 'UTC')
+GROUP BY country
+ORDER BY country
+SETTINGS
+    max_threads = 4,
+    use_query_cache = 0,
+    use_query_condition_cache = 0,
+    optimize_move_to_prewhere = 0;
+
+-- 2.2.4 Все страны, hw_events_country
+SELECT
+    country,
+    count() AS events_total,
+    countIf(played_seconds < 20) AS events_under_20,
+    round(100 * countIf(played_seconds < 20) / count(), 2) AS under_20_percent
+FROM takt.hw_events_country
+WHERE ended_at >= toDateTime('2026-10-24 00:00:00', 'UTC')
+  AND ended_at <  toDateTime('2026-10-25 00:00:00', 'UTC')
+GROUP BY country
+ORDER BY country
+SETTINGS
+    max_threads = 4,
+    use_query_cache = 0,
+    use_query_condition_cache = 0,
+    optimize_move_to_prewhere = 0;

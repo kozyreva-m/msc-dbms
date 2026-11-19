@@ -1,0 +1,5 @@
+query	table	granules	read_rows	read_bytes
+DE	hw_events_time	102/1221	835584	15040512
+DE	hw_events_country	8/1221	65536	1179648
+ALL	hw_events_time	102/1221	835584	15040512
+ALL	hw_events_country	114/1221	931456	16766208
