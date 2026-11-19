@@ -1,0 +1,4 @@
+hour	country	events_total	short_count	seconds_sum	under_20_percent	avg_seconds
+2026-10-27 19:00:00	KZ	2	0	50	0	25
+2026-10-27 19:00:00	RU	11	7	171	63.64	15.55
+2026-10-27 20:00:00	RU	3	3	30	100	10
